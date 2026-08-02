@@ -58,15 +58,13 @@ class PresentationManager:
         self._state_manager.save(backup)
 
         try:
-            # Suppress notifications first — this restarts explorer.exe, so any
-            # desktop-icon or wallpaper changes must happen *after* it returns.
-            if config.do_not_disturb:
-                self._notification_controller.enable_suppression()
-                logger.info("Notification suppression enabled.")
-
             if config.desktop_icons:
                 self._desktop_controller.hide_icons()
                 logger.info("Desktop icons hidden.")
+
+            if config.do_not_disturb:
+                self._notification_controller.enable_suppression()
+                logger.info("Notification suppression enabled.")
 
             if config.change_wallpaper:
                 clean_wallpaper = self._wallpaper_controller.apply_clean_wallpaper(
@@ -123,18 +121,15 @@ class PresentationManager:
 
     def _restore_from_backup(self, backup: PresentationState) -> None:
         try:
-            # Restore minimized apps first (independent of explorer).
             if backup.minimized:
                 self._process_controller.restore_apps(backup.minimized)
                 logger.info("Restored minimized apps.")
-            # Restore notifications next — this restarts explorer.exe, so
-            # wallpaper and desktop-icon restores must happen *after* it.
-            if backup.focus_assist is not None:
-                self._notification_controller.restore(backup.focus_assist)
-                logger.info("Notification state restored.")
             if backup.wallpaper is not None:
                 self._wallpaper_controller.restore_wallpaper(backup.wallpaper)
                 logger.info("Wallpaper restored.")
+            if backup.focus_assist is not None:
+                self._notification_controller.restore(backup.focus_assist)
+                logger.info("Notification state restored.")
             if backup.desktop_icons is not None:
                 self._desktop_controller.restore_icons(backup.desktop_icons)
                 logger.info("Desktop icons restored.")
