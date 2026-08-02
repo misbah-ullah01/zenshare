@@ -4,7 +4,7 @@ ZenShare gets a Windows desktop ready for screen sharing. It hides desktop icons
 
 ## Fastest way to use it
 
-1. Open [ZenShare.exe](dist/ZenShare.exe).
+1. Open [ZenShare v1.5.1](https://github.com/misbah-ullah01/zenshare/releases/tag/v1.5.1).
 2. At the `zenshare>` prompt, type `start` and press Enter.
 3. Share your screen.
 4. Type `stop` when you are done to restore your desktop.
