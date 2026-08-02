@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import os
+import threading
 
 import pystray
 from PIL import Image, ImageDraw
 
 from .app import ZenShareApp
-from .constants import APP_NAME
+from .constants import APP_NAME, STATE_DIR
 
 
 class TrayController:
@@ -21,12 +22,21 @@ class TrayController:
     def run(self) -> None:
         """Run the tray icon until the user exits."""
 
-        self._icon.run()
+        pid_path = STATE_DIR / "tray.pid"
+        pid_path.parent.mkdir(parents=True, exist_ok=True)
+        pid_path.write_text(str(os.getpid()), encoding="utf-8")
+        try:
+            self._icon.run()
+        finally:
+            if pid_path.exists() and pid_path.read_text(encoding="utf-8").strip() == str(os.getpid()):
+                pid_path.unlink()
 
     def _build_menu(self) -> pystray.Menu:
         return pystray.Menu(
+            pystray.MenuItem("Open ZenShare command window", self._open_console),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Start presentation mode", self._start_from_tray),
-            pystray.MenuItem("Stop presentation mode", self._stop_from_tray),
+            pystray.MenuItem("Stop and restore desktop", self._stop_from_tray),
             pystray.MenuItem("Show status", self._show_status_from_tray),
             pystray.MenuItem("Open config", self._open_config_from_tray),
             pystray.MenuItem("Open logs", self._open_logs_from_tray),
@@ -44,14 +54,32 @@ class TrayController:
         return image
 
     def _start_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
-        self._app.start()
+        self._run_action("Presentation mode", self._app.start)
 
     def _stop_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
-        self._app.stop()
+        self._run_action("Desktop restore", self._app.stop)
 
     def _show_status_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         status = self._app.status()
-        print(status)
+        message = "Presentation mode is active." if status["state_exists"] else "Presentation mode is not active."
+        self._icon.notify(message, APP_NAME)
+
+    def _open_console(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
+        from .shell import open_console
+
+        open_console()
+
+    def _run_action(self, label: str, action) -> None:
+        """Run a potentially slow Windows operation without freezing the tray menu."""
+
+        def worker() -> None:
+            try:
+                result = action()
+                self._icon.notify(result.message, label)
+            except Exception as exc:
+                self._icon.notify(f"Failed: {exc}", label)
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _open_config_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         os.startfile(str(self._app.config_manager.config_path))

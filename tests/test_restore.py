@@ -32,7 +32,7 @@ class RecordingNotificationController:
     def enable_suppression(self) -> None:
         self.calls.append("suppress")
 
-    def restore(self, enabled: bool) -> None:
+    def restore(self, enabled: dict[str, bool] | bool) -> None:
         self.calls.append(f"notifications:{enabled}")
 
 
@@ -43,7 +43,7 @@ class RecordingWallpaperController:
     def backup_wallpaper(self) -> str:
         return "C:/wallpaper.jpg"
 
-    def apply_clean_wallpaper(self, target_directory: Path) -> Path:
+    def apply_clean_wallpaper(self, target_directory: Path, wallpaper: str = "default") -> Path:
         path = target_directory / "clean.bmp"
         path.write_text("bmp", encoding="utf-8")
         return path

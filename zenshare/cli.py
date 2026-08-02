@@ -43,9 +43,15 @@ def _parse_config_value(raw_value: str) -> Any:
     return value
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
-def main() -> None:
+@click.group(context_settings={"help_option_names": ["-h", "--help"]}, invoke_without_command=True)
+@click.pass_context
+def main(ctx: click.Context) -> None:
     """ZenShare command line entry point."""
+
+    if ctx.invoked_subcommand is None:
+        from .shell import run_shell
+
+        run_shell(main)
 
 
 @main.command()
@@ -126,13 +132,15 @@ def logs(tail: int) -> None:
 
 
 @main.command()
-def tray() -> None:
+@click.option("--quiet", is_flag=True, hidden=True, help="Suppress console output for the detached tray process.")
+def tray(quiet: bool) -> None:
     """Run ZenShare in the Windows tray for background control."""
 
     from .tray import TrayController
 
     app = _build_app()
-    _print_header("ZenShare tray mode")
+    if not quiet:
+        _print_header("ZenShare tray mode")
     TrayController(app).run()
 
 

@@ -37,7 +37,7 @@ class NoOpNotificationController:
     def enable_suppression(self) -> None:
         return None
 
-    def restore(self, enabled: bool) -> None:
+    def restore(self, enabled: dict[str, bool] | bool) -> None:
         return None
 
 
@@ -45,7 +45,7 @@ class NoOpWallpaperController:
     def backup_wallpaper(self) -> str:
         return "C:/wallpaper.jpg"
 
-    def apply_clean_wallpaper(self, target_directory: Path) -> Path:
+    def apply_clean_wallpaper(self, target_directory: Path, wallpaper: str = "default") -> Path:
         return target_directory / "clean.bmp"
 
     def restore_wallpaper(self, wallpaper_path: str) -> None:

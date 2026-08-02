@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import struct
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ import zlib
 if sys.platform == "win32":  # pragma: no cover - Windows-only behavior
     import ctypes
 
-from ..constants import DEFAULT_CLEAN_WALLPAPER_NAME, DEFAULT_WALLPAPER_SIZE
+from ..constants import DEFAULT_CLEAN_WALLPAPER_NAME, DEFAULT_WALLPAPER_PATH, DEFAULT_WALLPAPER_SIZE
 from ..utils.exceptions import WindowsOperationError
 from ..utils.helpers import ensure_parent_directory
 
@@ -36,15 +37,28 @@ class WallpaperController:
             return ""
         return buffer.value
 
-    def apply_clean_wallpaper(self, target_directory: Path) -> Path:
-        """Create and apply a neutral wallpaper image."""
+    def apply_clean_wallpaper(self, target_directory: Path, wallpaper: str = "default") -> Path:
+        """Apply the bundled ZenShare wallpaper or a user-selected image."""
 
         self._require_windows()
         wallpaper_path = target_directory / DEFAULT_CLEAN_WALLPAPER_NAME
         ensure_parent_directory(wallpaper_path)
-        self._create_solid_bmp(wallpaper_path)
+        source_path = self._resolve_wallpaper(wallpaper)
+        if source_path is None:
+            self._create_solid_bmp(wallpaper_path)
+        else:
+            shutil.copy2(source_path, wallpaper_path)
         self._set_wallpaper(str(wallpaper_path))
         return wallpaper_path
+
+    @staticmethod
+    def _resolve_wallpaper(wallpaper: str) -> Path | None:
+        if wallpaper.strip().lower() == "none":
+            return None
+        source = DEFAULT_WALLPAPER_PATH if wallpaper.strip().lower() == "default" else Path(wallpaper).expanduser()
+        if not source.is_file():
+            raise WindowsOperationError(f"Wallpaper image was not found: {source}")
+        return source
 
     def restore_wallpaper(self, wallpaper_path: str) -> None:
         """Restore a previously backed-up wallpaper path."""

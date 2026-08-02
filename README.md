@@ -1,137 +1,94 @@
 # ZenShare
 
-ZenShare is a Windows-only command-line utility that prepares a machine for screen sharing and restores the desktop afterward.
+ZenShare gets a Windows desktop ready for screen sharing. It hides desktop icons, blocks and dismisses notification banners, applies your ZenShare wallpaper, and minimizes selected chat apps. When you finish, it restores the settings it changed.
 
-It is designed around a simple flow:
+## Fastest way to use it
 
-1. Save the current desktop state.
-2. Apply presentation mode.
-3. Restore everything on stop.
+1. Open [ZenShare.exe](dist/ZenShare.exe).
+2. At the `zenshare>` prompt, type `start` and press Enter.
+3. Share your screen.
+4. Type `stop` when you are done to restore your desktop.
 
-## What ZenShare Changes
+The prompt always accepts `help` if you want to see the available commands again.
 
-- Desktop icons are hidden and restored.
-- Notifications are suppressed and restored.
-- Wallpaper is replaced with a clean temporary wallpaper and restored.
-- Configured apps can be minimized.
-- Configured apps can optionally be closed gracefully.
-- The active state is stored in `state/state.json` while presentation mode is running.
+## Keep ZenShare running in the tray
 
-## Install
+When you close the ZenShare command window with the **X**, ZenShare stays available in the Windows system tray (next to the clock).
 
-ZenShare is meant to be easy to install on a new Windows PC.
+Right-click the ZenShare tray icon to:
 
-### Option 1: Scripted setup
+- **Open ZenShare command window** — bring back a full CLI window.
+- **Start presentation mode** — prepare your desktop without reopening the CLI.
+- **Stop and restore desktop** — return icons, wallpaper, and notification settings.
+- **Show status** — see whether presentation mode is active.
+- **Open config** or **Open logs** — open the relevant file.
+- **Exit** — close the tray application.
 
-Run this from PowerShell in the project root:
+Type `exit` in the CLI only when you want to close ZenShare completely.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `start` | Turns on presentation mode. |
+| `stop` | Restores the desktop to its saved state. |
+| `status` | Shows whether presentation mode is active. |
+| `config` | Shows current settings. |
+| `config --set KEY=VALUE` | Changes and saves a setting. |
+| `logs` | Shows recent activity and errors. |
+| `help` | Shows the command reference in the interactive CLI. |
+| `exit` | Closes ZenShare and its tray icon. |
+
+Useful examples:
 
 ```powershell
-scripts\install.ps1
+ZenShare.exe start
+ZenShare.exe status
+ZenShare.exe config --set minimize_apps=Discord,Slack
+ZenShare.exe config --set wallpaper=C:\Pictures\my-wallpaper.png
+ZenShare.exe stop
 ```
 
-That script will:
+## What `start` changes
 
-- Create a local virtual environment in `.venv` if needed.
-- Upgrade `pip`.
-- Install the dependencies from `requirements.txt`.
-- Install the tray and packaging dependencies needed for the background mode and exe build.
+- Hides desktop icons.
+- Enables Do Not Disturb and disables new Windows toast banners.
+- Dismisses any currently visible Windows notification banner where Windows exposes it.
+- Applies the bundled ZenShare wallpaper.
+- Minimizes Discord, WhatsApp, Slack, and Telegram by default.
 
-### Option 2: Build a single executable
+ZenShare never closes your apps unless you explicitly add them to `close_apps` in the configuration.
 
-To install dependencies and build a standalone executable:
+## Wallpaper
+
+The bundled ZenShare wallpaper is used by default. To use your own image, give its absolute path:
+
+```powershell
+ZenShare.exe config --set wallpaper=C:\Pictures\my-wallpaper.png
+```
+
+Use `ZenShare.exe stop` to restore your previous wallpaper.
+
+## Configuration and logs
+
+The EXE is self-contained. It does not need this repository, Python, or a virtual environment after it has been built. Its writable files are stored here:
+
+```text
+%LOCALAPPDATA%\ZenShare\config\config.yaml
+%LOCALAPPDATA%\ZenShare\logs\zenshare.log
+%LOCALAPPDATA%\ZenShare\state\state.json
+```
+
+## Build from source
+
+Run this from the project root:
 
 ```powershell
 scripts\install.ps1 -Build
 ```
 
-The executable is generated in `dist\ZenShare.exe`.
+The resulting single-file application is `dist\ZenShare.exe`.
 
-## Tray Mode
+## Browser login-page privacy
 
-ZenShare can run in the Windows tray so you can keep it available in the background.
-
-Start the tray app from the virtual environment:
-
-```powershell
-scripts\run.ps1 tray
-```
-
-From the tray menu you can:
-
-- Start presentation mode.
-- Stop and restore the desktop.
-- Show the current status.
-- Open the config file.
-- Open the logs.
-- Exit the tray app.
-
-If you build the exe, the same command line works:
-
-```powershell
-ZenShare.exe tray
-```
-
-## Run
-
-If you want to run the CLI from the virtual environment, use:
-
-```powershell
-scripts\run.ps1 start
-```
-
-The main commands are:
-
-- `zenshare start`
-- `zenshare stop`
-- `zenshare status`
-- `zenshare config`
-- `zenshare logs`
-- `zenshare tray`
-
-## Configuration
-
-The default configuration lives in `config/config.yaml`.
-
-Useful settings:
-
-- `desktop_icons`: set to `true` so ZenShare hides and restores desktop icons during start and stop.
-- `do_not_disturb`: set to `true` to suppress notifications.
-- `change_wallpaper`: set to `true` to swap in a clean wallpaper.
-- `minimize_apps`: list of apps to minimize, for example `Discord`, `WhatsApp`, `Slack`, and `Telegram`.
-- `close_apps`: list of apps to close gracefully.
-- `restore_timeout`: restore timeout in seconds.
-
-You can update the config from the CLI:
-
-```powershell
-zenshare config --set desktop_icons=true --set do_not_disturb=true --set restore_timeout=15
-```
-
-## Start And Stop
-
-Start presentation mode:
-
-```powershell
-zenshare start
-```
-
-Stop and restore the desktop state:
-
-```powershell
-zenshare stop
-```
-
-## Browser Privacy Shield
-
-The optional Chromium-based companion extension is in [browser-privacy-extension](browser-privacy-extension).
-
-It blurs pages that look like login, signup, registration, password, or verification screens. That helps keep sensitive content harder to read when a browser is on screen.
-
-Install it in Chrome or Edge as an unpacked extension if you want browser-level privacy protection alongside the CLI.
-
-## Notes
-
-- ZenShare is Windows-only.
-- The project is already wired for Python 3.12+.
-- Use the scripts above for the easiest setup path on a fresh machine.
-- The clean wallpaper is generated as a PNG in `state\zenshare_clean_wallpaper.png` while presentation mode is active.
+The optional `browser-privacy-extension` can blur browser login and password pages. It affects your browser view as well as the shared view; Windows cannot selectively blur an arbitrary third-party app for viewers only.

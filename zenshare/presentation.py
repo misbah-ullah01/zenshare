@@ -49,6 +49,10 @@ class PresentationManager:
         """Apply presentation mode while backing up the original state."""
 
         logger.info("Preparing presentation mode.")
+        existing_state = self._state_manager.load()
+        if existing_state is not None:
+            logger.info("Presentation mode was already active.")
+            return PresentationResult(message="Presentation mode is already active.", state=existing_state)
         # Save the initial snapshot before changing anything so rollback has a clean base.
         backup = self._build_backup_state()
         self._state_manager.save(backup)
@@ -63,7 +67,9 @@ class PresentationManager:
                 logger.info("Notification suppression enabled.")
 
             if config.change_wallpaper:
-                clean_wallpaper = self._wallpaper_controller.apply_clean_wallpaper(self._state_directory)
+                clean_wallpaper = self._wallpaper_controller.apply_clean_wallpaper(
+                    self._state_directory, config.wallpaper
+                )
                 logger.info("Wallpaper changed to {}.", clean_wallpaper)
 
             # Capture the apps that are actually running before we minimize or close them.

@@ -27,13 +27,13 @@ class FakeNotificationController:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def backup_state(self) -> bool:
-        return True
+    def backup_state(self) -> dict[str, bool]:
+        return {"toast_enabled": True, "global_toasts_enabled": True, "do_not_disturb_enabled": False}
 
     def enable_suppression(self) -> None:
         self.calls.append("suppress")
 
-    def restore(self, enabled: bool) -> None:
+    def restore(self, enabled: dict[str, bool] | bool) -> None:
         self.calls.append(f"restore:{enabled}")
 
 
@@ -45,7 +45,7 @@ class FakeWallpaperController:
     def backup_wallpaper(self) -> str:
         return self.wallpaper_path
 
-    def apply_clean_wallpaper(self, target_directory: Path) -> Path:
+    def apply_clean_wallpaper(self, target_directory: Path, wallpaper: str = "default") -> Path:
         self.calls.append(str(target_directory))
         wallpaper_file = target_directory / "clean.bmp"
         wallpaper_file.write_text("bmp", encoding="utf-8")
@@ -110,7 +110,7 @@ def test_start_writes_a_backup_and_tracks_minimized_apps(tmp_path: Path) -> None
     assert loaded is not None
     assert loaded.desktop_icons is True
     assert loaded.wallpaper == "C:/Users/Test/wallpaper.jpg"
-    assert loaded.focus_assist is True
+    assert loaded.focus_assist == {"toast_enabled": True, "global_toasts_enabled": True, "do_not_disturb_enabled": False}
     assert loaded.running_apps == ["Discord", "Teams"]
     assert loaded.minimized == ["Discord"]
     assert desktop.calls == ["hide"]

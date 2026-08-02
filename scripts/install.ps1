@@ -25,5 +25,5 @@ if (-not (Test-Path $venvPython)) {
 & $venvPython -m pip install -r (Join-Path $projectRoot 'requirements.txt')
 
 if ($Build) {
-    & $venvPython -m PyInstaller --noconfirm --clean --onefile --name ZenShare (Join-Path $projectRoot 'zenshare\__main__.py')
+    & $venvPython -m PyInstaller --noconfirm --clean --onefile --console --name ZenShare --add-data "$projectRoot\config\defaults.yaml;config" --add-data "$projectRoot\assets\ZenShare.png;assets" --collect-all pystray --collect-all PIL --hidden-import zenshare.cli --hidden-import zenshare.tray --hidden-import zenshare.windows.notifications --hidden-import zenshare.windows.wallpaper --copy-metadata zenshare (Join-Path $projectRoot 'zenshare_cli.py')
 }
