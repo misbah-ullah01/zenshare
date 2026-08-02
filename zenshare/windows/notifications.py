@@ -38,8 +38,13 @@ class NotificationController:
         """Enable Do Not Disturb, block new toast banners, and dismiss visible ones."""
 
         self._write_notifications_enabled(False)
-        self._dismiss_visible_toasts()
+        self.dismiss_visible_notifications()
         refresh_shell()
+
+    def dismiss_visible_notifications(self) -> None:
+        """Dismiss currently visible Windows toast banners when possible."""
+
+        self._dismiss_visible_toasts()
 
     def restore(self, state: dict[str, bool] | bool) -> None:
         """Restore toast notification state."""

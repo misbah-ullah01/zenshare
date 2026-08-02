@@ -40,10 +40,17 @@ def _start_tray_process() -> None:
     command = [sys.executable, "tray", "--quiet"]
     if not getattr(sys, "frozen", False):
         command = [sys.executable, "-m", "zenshare", "tray", "--quiet"]
+    environment = os.environ.copy()
+    if getattr(sys, "frozen", False):
+        # A one-file PyInstaller child must unpack its own resources. Inheriting
+        # the parent's extraction directory leaves it pointing at a folder that
+        # disappears when the console is closed.
+        environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
     subprocess.Popen(
         command,
         close_fds=True,
         creationflags=creationflags,
+        env=environment,
     )
 
 
@@ -70,7 +77,10 @@ def open_console() -> None:
         creationflags = subprocess.CREATE_NEW_CONSOLE
     if not getattr(sys, "frozen", False):
         command = [sys.executable, "-m", "zenshare"]
-    subprocess.Popen(command, close_fds=True, creationflags=creationflags)
+    environment = os.environ.copy()
+    if getattr(sys, "frozen", False):
+        environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    subprocess.Popen(command, close_fds=True, creationflags=creationflags, env=environment)
 
 
 def run_shell(command: click.BaseCommand) -> None:

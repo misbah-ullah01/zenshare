@@ -18,6 +18,7 @@ class TrayController:
     def __init__(self, app: ZenShareApp) -> None:
         self._app = app
         self._icon = pystray.Icon(APP_NAME, self._build_icon(), APP_NAME, self._build_menu())
+        self._notification_guard_stop = threading.Event()
 
     def run(self) -> None:
         """Run the tray icon until the user exits."""
@@ -25,9 +26,11 @@ class TrayController:
         pid_path = STATE_DIR / "tray.pid"
         pid_path.parent.mkdir(parents=True, exist_ok=True)
         pid_path.write_text(str(os.getpid()), encoding="utf-8")
+        threading.Thread(target=self._guard_notification_banners, daemon=True).start()
         try:
             self._icon.run()
         finally:
+            self._notification_guard_stop.set()
             if pid_path.exists() and pid_path.read_text(encoding="utf-8").strip() == str(os.getpid()):
                 pid_path.unlink()
 
@@ -81,7 +84,24 @@ class TrayController:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _guard_notification_banners(self) -> None:
+        """Continuously remove shell-hosted banners while presentation mode is active."""
+
+        from .windows.notifications import NotificationController
+
+        controller = NotificationController()
+        while not self._notification_guard_stop.wait(0.5):
+            if not self._app.state_manager.exists():
+                continue
+            try:
+                controller.dismiss_visible_notifications()
+            except Exception:
+                # This guard is best-effort; it must never interrupt tray control.
+                continue
+
     def _open_config_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
+        config = self._app.config_manager.load()
+        self._app.config_manager.save(config)
         os.startfile(str(self._app.config_manager.config_path))
 
     def _open_logs_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
