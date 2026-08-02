@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenshare"
+version = "0.1.0"
+description = "ZenShare desktop presentation helper for Windows"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+	"click>=8.1",
+	"loguru>=0.7",
+	"pydantic>=2.7",
+	"psutil>=5.9",
+	"pyyaml>=6.0",
+	"rich>=13.7",
+	"pywin32>=306; platform_system == 'Windows'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2"]
+
+[project.scripts]
+zenshare = "zenshare.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["zenshare*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

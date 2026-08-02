@@ -1,0 +1,12 @@
+desktop_icons: true
+do_not_disturb: true
+change_wallpaper: true
+wallpaper: default
+minimize_apps:
+  - Discord
+  - WhatsApp
+  - Slack
+  - Telegram
+close_apps: []
+restore_timeout: 10
+logging: true
