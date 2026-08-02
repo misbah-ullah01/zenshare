@@ -61,7 +61,7 @@ def start() -> None:
     app = _build_app()
     _print_header("Preparing Presentation Mode...")
     result = app.start()
-    console.print(f"[green]✓[/green] {result.message}")
+    console.print(f"[green]OK[/green] {result.message}")
 
 
 @main.command()
@@ -71,7 +71,7 @@ def stop() -> None:
     app = _build_app()
     _print_header("Restoring Desktop State...")
     result = app.stop()
-    console.print(f"[green]✓[/green] {result.message}")
+    console.print(f"[green]OK[/green] {result.message}")
 
 
 @main.command()
