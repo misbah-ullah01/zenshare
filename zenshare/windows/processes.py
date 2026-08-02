@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import ctypes
+import subprocess
 import sys
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,10 +13,13 @@ from pathlib import Path
 import psutil
 
 from ..utils.exceptions import WindowsOperationError
+from ..state import AppLaunchSpec
 from ..utils.validation import app_name_matches, normalize_app_names, process_matches_target
 
 SW_MINIMIZE = 6
 SW_RESTORE = 9
+SW_SHOWMINNOACTIVE = 7
+STARTF_USESHOWWINDOW = 0x00000001
 
 
 @dataclass(slots=True)
@@ -62,6 +67,71 @@ class ProcessController:
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
                 continue
         return ProcessActionResult(matched_apps=matched_apps)
+
+    def capture_launch_specs(self, app_names: Iterable[str]) -> list[AppLaunchSpec]:
+        """Capture unique executable commands for currently running target apps."""
+
+        targets = normalize_app_names(list(app_names))
+        captured: list[AppLaunchSpec] = []
+        seen: set[tuple[str, tuple[str, ...]]] = set()
+        processes = list(psutil.process_iter(["name", "pid", "exe", "cmdline"]))
+        for target in targets:
+            matches = [process for process in processes if self._process_matches_targets(process, [target])]
+            # Prefer a primary executable/name match over browser/WebView helper
+            # processes whose command line merely happens to mention the app.
+            direct_matches = [process for process in matches if self._process_directly_matches_target(process, target)]
+            for process in (direct_matches or matches)[:1]:
+                executable = process.info.get("exe") or ""
+                command_line = process.info.get("cmdline") or []
+                if not executable or not command_line:
+                    continue
+                key = (executable.casefold(), tuple(command_line[1:]))
+                if key in seen:
+                    continue
+                seen.add(key)
+                captured.append(
+                    AppLaunchSpec(
+                        executable=executable,
+                        arguments=command_line[1:],
+                        app_name=target,
+                    )
+                )
+        return captured
+
+    @staticmethod
+    def _process_directly_matches_target(process: psutil.Process, target: str) -> bool:
+        """Return whether the process executable itself identifies as the app."""
+
+        return process_matches_target(
+            process.info.get("name") or "", process.info.get("exe") or None, [], target
+        )
+
+    def relaunch_minimized(self, launch_specs: Iterable[AppLaunchSpec]) -> list[str]:
+        """Restart saved applications without stealing focus from the current window."""
+
+        self._require_windows()
+        launched: list[str] = []
+        startup_info = subprocess.STARTUPINFO()
+        startup_info.dwFlags |= STARTF_USESHOWWINDOW
+        startup_info.wShowWindow = SW_SHOWMINNOACTIVE
+        for spec in launch_specs:
+            try:
+                subprocess.Popen(
+                    [spec.executable, *spec.arguments],
+                    startupinfo=startup_info,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+                    close_fds=True,
+                )
+                launched.append(spec.app_name)
+            except (OSError, ValueError):
+                continue
+
+        # Some Electron and Store apps ignore STARTF_USESHOWWINDOW. Minimize
+        # their newly created windows once their launcher has had time to start.
+        if launched:
+            time.sleep(1)
+            self.minimize_apps(launched)
+        return launched
 
     def _apply_window_action(self, targets: list[str], command: int) -> list[str]:
         self._require_windows()

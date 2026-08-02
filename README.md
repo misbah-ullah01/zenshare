@@ -1,6 +1,6 @@
 # ZenShare
 
-ZenShare gets a Windows desktop ready for screen sharing. It hides desktop icons, blocks and dismisses notification banners, applies your ZenShare wallpaper, and minimizes selected chat apps. When you finish, it restores the settings it changed.
+ZenShare gets a Windows desktop ready for screen sharing. It hides desktop icons, blocks notification banners, applies your ZenShare wallpaper, and closes selected messaging/social apps. When you finish, it restores the settings it changed and reopens those apps minimized in the background.
 
 ## Fastest way to use it
 
@@ -19,7 +19,7 @@ Right-click the ZenShare tray icon to:
 
 - **Open ZenShare command window** — bring back a full CLI window.
 - **Start presentation mode** — prepare your desktop without reopening the CLI.
-- **Stop and restore desktop** — return icons, wallpaper, and notification settings.
+- **Stop and restore desktop** — return icons, wallpaper, notification settings, and reopen closed messaging apps minimized.
 - **Show status** — see whether presentation mode is active.
 - **Open config** or **Open logs** — open the relevant file.
 - **Exit** — close the tray application.
@@ -55,7 +55,8 @@ ZenShare.exe stop
 - Enables Do Not Disturb and disables new Windows toast banners.
 - Dismisses any currently visible Windows notification banner where Windows exposes it.
 - Applies the bundled ZenShare wallpaper.
-- Minimizes Discord, WhatsApp, Slack, and Telegram by default.
+- Closes Discord, WhatsApp, Slack, and Telegram by default when they are running.
+- Reopens only the apps ZenShare closed when you stop, using a minimized, non-focus-stealing launch. Apps that were not open before `start` stay closed.
 
 ZenShare never closes your apps unless you explicitly add them to `close_apps` in the configuration.
 

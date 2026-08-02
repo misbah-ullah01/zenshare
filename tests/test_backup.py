@@ -6,7 +6,7 @@ from pathlib import Path
 
 from zenshare.config import ZenShareConfig
 from zenshare.presentation import PresentationManager
-from zenshare.state import PresentationState, StateManager
+from zenshare.state import AppLaunchSpec, PresentationState, StateManager
 
 
 class FakeDesktopController:
@@ -71,6 +71,14 @@ class FakeProcessController:
         self.calls.append(("close", tuple(app_names)))
         return type("Result", (), {"matched_apps": ["Teams"]})()
 
+    def capture_launch_specs(self, app_names: list[str]) -> list[AppLaunchSpec]:
+        self.calls.append(("capture", tuple(app_names)))
+        return [AppLaunchSpec(executable="C:/Teams/Teams.exe", arguments=[], app_name="Teams")]
+
+    def relaunch_minimized(self, launch_specs: list[AppLaunchSpec]) -> list[str]:
+        self.calls.append(("relaunch", tuple(spec.app_name for spec in launch_specs)))
+        return [spec.app_name for spec in launch_specs]
+
     def restore_apps(self, app_names: list[str]) -> None:
         self.calls.append(("restore", tuple(app_names)))
 
@@ -111,12 +119,12 @@ def test_start_writes_a_backup_and_tracks_minimized_apps(tmp_path: Path) -> None
     assert loaded.desktop_icons is True
     assert loaded.wallpaper == "C:/Users/Test/wallpaper.jpg"
     assert loaded.focus_assist == {"toast_enabled": True, "global_toasts_enabled": True, "do_not_disturb_enabled": False}
-    assert loaded.running_apps == ["Discord", "Teams"]
-    assert loaded.minimized == ["Discord"]
+    assert loaded.running_apps == ["Teams"]
+    assert loaded.closed_apps[0].app_name == "Teams"
     assert desktop.calls == ["hide"]
     assert notifications.calls == ["suppress"]
     assert processes.calls == [
-        ("find", ("Discord", "Teams")),
-        ("minimize", ("Discord",)),
+        ("find", ("Teams",)),
+        ("capture", ("Teams",)),
         ("close", ("Teams",)),
     ]

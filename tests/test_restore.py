@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from zenshare.presentation import PresentationManager
-from zenshare.state import PresentationState, StateManager
+from zenshare.state import AppLaunchSpec, PresentationState, StateManager
 
 
 class RecordingDesktopController:
@@ -63,6 +63,10 @@ class RecordingProcessController:
     def restore_apps(self, app_names: list[str]) -> None:
         self.calls.append(("restore", tuple(app_names)))
 
+    def relaunch_minimized(self, launch_specs: list[AppLaunchSpec]) -> list[str]:
+        self.calls.append(("relaunch", tuple(spec.app_name for spec in launch_specs)))
+        return [spec.app_name for spec in launch_specs]
+
 
 def test_stop_restores_state_in_reverse_order_and_removes_state_file(tmp_path: Path) -> None:
     """Stopping should restore the backed-up state and remove the file."""
@@ -73,6 +77,7 @@ def test_stop_restores_state_in_reverse_order_and_removes_state_file(tmp_path: P
         wallpaper="C:/wallpaper.jpg",
         focus_assist=False,
         minimized=["Discord", "Slack"],
+        closed_apps=[AppLaunchSpec(executable="C:/Discord/Discord.exe", app_name="Discord")],
         created_at="2026-08-01T21:00:00+00:00",
     )
     state_manager.save(backup)
@@ -94,7 +99,7 @@ def test_stop_restores_state_in_reverse_order_and_removes_state_file(tmp_path: P
 
     assert result.state == backup
     assert state_manager.exists() is False
-    assert processes.calls == [("restore", ("Discord", "Slack"))]
+    assert processes.calls == [("restore", ("Discord", "Slack")), ("relaunch", ("Discord",))]
     assert wallpaper.calls == ["wallpaper:C:/wallpaper.jpg"]
     assert notifications.calls == ["notifications:False"]
     assert desktop.calls == ["desktop:False"]

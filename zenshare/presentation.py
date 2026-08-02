@@ -72,18 +72,18 @@ class PresentationManager:
                 )
                 logger.info("Wallpaper changed to {}.", clean_wallpaper)
 
-            # Capture the apps that are actually running before we minimize or close them.
-            running_apps = self._process_controller.find_running_apps(config.minimize_apps + config.close_apps)
+            # Close configured messaging/social apps for the presentation. For
+            # backwards compatibility, the old minimize list is isolated too
+            # when close_apps has not been explicitly configured.
+            apps_to_close = config.close_apps or config.minimize_apps
+            running_apps = self._process_controller.find_running_apps(apps_to_close)
             backup = backup.model_copy(update={"running_apps": running_apps})
 
-            minimized_result = self._process_controller.minimize_apps(config.minimize_apps)
-            if minimized_result.matched_apps:
-                backup = backup.model_copy(update={"minimized": minimized_result.matched_apps})
-                logger.info("Minimized apps: {}.", ", ".join(minimized_result.matched_apps))
-
-            if config.close_apps:
-                closed_result = self._process_controller.close_apps(config.close_apps)
+            launch_specs = self._process_controller.capture_launch_specs(apps_to_close)
+            if apps_to_close:
+                closed_result = self._process_controller.close_apps(apps_to_close)
                 if closed_result.matched_apps:
+                    backup = backup.model_copy(update={"closed_apps": launch_specs})
                     logger.info("Closed apps: {}.", ", ".join(closed_result.matched_apps))
 
             # Persist the enriched backup only after all requested presentation changes succeed.
@@ -127,6 +127,9 @@ class PresentationManager:
             if backup.minimized:
                 self._process_controller.restore_apps(backup.minimized)
                 logger.info("Restored minimized apps.")
+            if backup.closed_apps:
+                self._process_controller.relaunch_minimized(backup.closed_apps)
+                logger.info("Relaunched closed apps in the background.")
             if backup.wallpaper is not None:
                 self._wallpaper_controller.restore_wallpaper(backup.wallpaper)
                 logger.info("Wallpaper restored.")

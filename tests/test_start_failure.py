@@ -18,6 +18,12 @@ class FailingProcessController:
     def minimize_apps(self, app_names: list[str]):
         raise RuntimeError("minimize failed")
 
+    def capture_launch_specs(self, app_names: list[str]):
+        return []
+
+    def close_apps(self, app_names: list[str]):
+        raise RuntimeError("close failed")
+
 
 class NoOpDesktopController:
     def backup_visibility(self) -> bool:

@@ -22,7 +22,16 @@ class PresentationState(BaseModel):
     focus_assist: dict[str, bool] | bool | None = None
     running_apps: list[str] = Field(default_factory=list)
     minimized: list[str] = Field(default_factory=list)
+    closed_apps: list["AppLaunchSpec"] = Field(default_factory=list)
     created_at: str = Field(default_factory=current_timestamp)
+
+
+class AppLaunchSpec(BaseModel):
+    """Command needed to reopen an application that ZenShare closed."""
+
+    executable: str
+    arguments: list[str] = Field(default_factory=list)
+    app_name: str
 
 
 class StateManager:
