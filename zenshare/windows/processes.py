@@ -182,6 +182,18 @@ class ProcessController:
             if not ctypes.windll.user32.IsWindowVisible(hwnd):
                 return True
             ctypes.windll.user32.ShowWindow(hwnd, command)
+            # Electron/UWP apps (WhatsApp, Discord, etc.) suspend their renderer
+            # when minimized. Force a full repaint after restoring so they don't
+            # show a blank white screen.
+            if command == SW_RESTORE:
+                RDW_INVALIDATE = 0x0001
+                RDW_ERASE = 0x0004
+                RDW_ALLCHILDREN = 0x0080
+                RDW_UPDATENOW = 0x0100
+                ctypes.windll.user32.RedrawWindow(
+                    hwnd, None, None,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW,
+                )
             found_window = True
             return True
 
