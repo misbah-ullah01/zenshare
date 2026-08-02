@@ -26,6 +26,12 @@ class ProcessActionResult:
 class ProcessController:
     """Minimize and restore application windows."""
 
+    def find_running_apps(self, app_names: Iterable[str]) -> list[str]:
+        """Return running process names that match the provided app names."""
+
+        normalized_targets = normalize_app_names(list(app_names))
+        return self._matching_process_names(normalized_targets)
+
     def minimize_apps(self, app_names: Iterable[str]) -> ProcessActionResult:
         """Minimize windows that belong to the requested applications."""
 
@@ -39,16 +45,44 @@ class ProcessController:
         normalized_targets = normalize_app_names(list(app_names))
         self._apply_window_action(normalized_targets, SW_RESTORE)
 
-    def _apply_window_action(self, targets: list[str], command: int) -> list[str]:
-        self._require_windows()
+    def close_apps(self, app_names: Iterable[str]) -> ProcessActionResult:
+        """Request a graceful close for matching applications."""
+
+        normalized_targets = normalize_app_names(list(app_names))
         matched_apps: list[str] = []
         for process in psutil.process_iter(["name", "pid"]):
             process_name = process.info.get("name") or ""
-            if not any(app_name_matches(process_name, target) for target in targets):
+            if not any(app_name_matches(process_name, target) for target in normalized_targets):
                 continue
-            if self._set_windows_state_for_pid(process.info["pid"], command):
+            try:
+                # Best effort only: request a normal exit first and avoid forced termination.
+                process.terminate()
+                process.wait(timeout=5)
+                matched_apps.append(process_name)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
+                continue
+        return ProcessActionResult(matched_apps=matched_apps)
+
+    def _apply_window_action(self, targets: list[str], command: int) -> list[str]:
+        self._require_windows()
+        matched_apps: list[str] = []
+        for process_name, pid in self._iter_matching_processes(targets):
+            if self._set_windows_state_for_pid(pid, command):
                 matched_apps.append(process_name)
         return matched_apps
+
+    def _matching_process_names(self, targets: list[str]) -> list[str]:
+        return [process_name for process_name, _pid in self._iter_matching_processes(targets)]
+
+    def _iter_matching_processes(self, targets: list[str]) -> list[tuple[str, int]]:
+        matches: list[tuple[str, int]] = []
+        for process in psutil.process_iter(["name", "pid"]):
+            process_name = process.info.get("name") or ""
+            if not process_name:
+                continue
+            if any(app_name_matches(process_name, target) for target in targets):
+                matches.append((process_name, process.info["pid"]))
+        return matches
 
     def _set_windows_state_for_pid(self, pid: int, command: int) -> bool:
         found_window = False
@@ -59,6 +93,7 @@ class ProcessController:
             ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
             if window_pid.value != pid:
                 return True
+            # Skip invisible helper windows so we only affect real user-facing windows.
             if not ctypes.windll.user32.IsWindowVisible(hwnd):
                 return True
             ctypes.windll.user32.ShowWindow(hwnd, command)

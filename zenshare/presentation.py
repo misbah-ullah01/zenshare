@@ -49,6 +49,7 @@ class PresentationManager:
         """Apply presentation mode while backing up the original state."""
 
         logger.info("Preparing presentation mode.")
+        # Save the initial snapshot before changing anything so rollback has a clean base.
         backup = self._build_backup_state()
         self._state_manager.save(backup)
 
@@ -65,17 +66,29 @@ class PresentationManager:
                 clean_wallpaper = self._wallpaper_controller.apply_clean_wallpaper(self._state_directory)
                 logger.info("Wallpaper changed to {}.", clean_wallpaper)
 
+            # Capture the apps that are actually running before we minimize or close them.
+            running_apps = self._process_controller.find_running_apps(config.minimize_apps + config.close_apps)
+            backup = backup.model_copy(update={"running_apps": running_apps})
+
             minimized_result = self._process_controller.minimize_apps(config.minimize_apps)
             if minimized_result.matched_apps:
                 backup = backup.model_copy(update={"minimized": minimized_result.matched_apps})
-                self._state_manager.save(backup)
                 logger.info("Minimized apps: {}.", ", ".join(minimized_result.matched_apps))
+
+            if config.close_apps:
+                closed_result = self._process_controller.close_apps(config.close_apps)
+                if closed_result.matched_apps:
+                    logger.info("Closed apps: {}.", ", ".join(closed_result.matched_apps))
+
+            # Persist the enriched backup only after all requested presentation changes succeed.
+            self._state_manager.save(backup)
 
             logger.info("Presentation mode enabled.")
             return PresentationResult(message="Presentation mode enabled.", state=backup)
         except Exception as exc:
             logger.exception("Presentation mode failed; starting rollback.")
             self._restore_from_backup(backup)
+            self._state_manager.delete()
             raise ZenShareError(f"Failed to start presentation mode: {exc}") from exc
 
     def stop(self) -> PresentationResult:
@@ -104,6 +117,7 @@ class PresentationManager:
 
     def _restore_from_backup(self, backup: PresentationState) -> None:
         try:
+            # Restore in the reverse order of presentation changes so later steps see the prior state.
             if backup.minimized:
                 self._process_controller.restore_apps(backup.minimized)
                 logger.info("Restored minimized apps.")

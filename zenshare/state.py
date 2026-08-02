@@ -20,6 +20,7 @@ class PresentationState(BaseModel):
     desktop_icons: bool | None = None
     wallpaper: str | None = None
     focus_assist: bool | None = None
+    running_apps: list[str] = Field(default_factory=list)
     minimized: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=current_timestamp)
 

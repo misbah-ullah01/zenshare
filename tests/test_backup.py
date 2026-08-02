@@ -59,9 +59,17 @@ class FakeProcessController:
     def __init__(self) -> None:
         self.calls: list[tuple[str, tuple[str, ...]]] = []
 
+    def find_running_apps(self, app_names: list[str]) -> list[str]:
+        self.calls.append(("find", tuple(app_names)))
+        return list(app_names)
+
     def minimize_apps(self, app_names: list[str]):
         self.calls.append(("minimize", tuple(app_names)))
         return type("Result", (), {"matched_apps": ["Discord"]})()
+
+    def close_apps(self, app_names: list[str]):
+        self.calls.append(("close", tuple(app_names)))
+        return type("Result", (), {"matched_apps": ["Teams"]})()
 
     def restore_apps(self, app_names: list[str]) -> None:
         self.calls.append(("restore", tuple(app_names)))
@@ -89,7 +97,7 @@ def test_start_writes_a_backup_and_tracks_minimized_apps(tmp_path: Path) -> None
         change_wallpaper=True,
         wallpaper="default",
         minimize_apps=["Discord"],
-        close_apps=[],
+        close_apps=["Teams"],
         restore_timeout=10,
         logging=False,
     )
@@ -103,7 +111,12 @@ def test_start_writes_a_backup_and_tracks_minimized_apps(tmp_path: Path) -> None
     assert loaded.desktop_icons is True
     assert loaded.wallpaper == "C:/Users/Test/wallpaper.jpg"
     assert loaded.focus_assist is True
+    assert loaded.running_apps == ["Discord", "Teams"]
     assert loaded.minimized == ["Discord"]
     assert desktop.calls == ["hide"]
     assert notifications.calls == ["suppress"]
-    assert processes.calls == [("minimize", ("Discord",))]
+    assert processes.calls == [
+        ("find", ("Discord", "Teams")),
+        ("minimize", ("Discord",)),
+        ("close", ("Teams",)),
+    ]
