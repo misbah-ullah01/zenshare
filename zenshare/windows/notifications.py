@@ -8,6 +8,7 @@ if sys.platform == "win32":  # pragma: no cover - Windows-only behavior
     import winreg
 
 from ..utils.exceptions import WindowsOperationError
+from .explorer import refresh_shell
 
 NOTIFICATIONS_KEY = r"Software\Microsoft\Windows\CurrentVersion\PushNotifications"
 NOTIFICATION_SETTINGS_KEY = r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
@@ -27,11 +28,13 @@ class NotificationController:
         """Disable toast notifications as a quiet-hours equivalent."""
 
         self._write_notifications_enabled(False)
+        refresh_shell()
 
     def restore(self, enabled: bool) -> None:
         """Restore toast notification state."""
 
         self._write_notifications_enabled(enabled)
+        refresh_shell()
 
     def _read_notifications_enabled(self) -> bool:
         self._require_windows()

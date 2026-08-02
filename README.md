@@ -1,19 +1,59 @@
 # ZenShare
 
-ZenShare is a Windows-only command-line utility for preparing a desktop for professional screen sharing and restoring the original desktop state afterward.
+ZenShare is a Windows-only command-line utility that prepares a machine for screen sharing and restores the desktop afterward.
 
-## Current Scope
+It is designed around a simple flow:
 
-This workspace now contains the initial Python package scaffold for ZenShare v1.0:
+1. Save the current desktop state.
+2. Apply presentation mode.
+3. Restore everything on stop.
 
-- Click-based CLI entry points
-- YAML configuration loading and saving
-- JSON state persistence
-- Loguru-based logging setup
-- Windows controller abstractions for desktop icons, wallpaper, notifications, and processes
-- Core presentation flow with rollback-friendly orchestration
+## What ZenShare Changes
 
-## Commands
+- Desktop icons are hidden and restored.
+- Notifications are suppressed and restored.
+- Wallpaper is replaced with a clean temporary wallpaper and restored.
+- Configured apps can be minimized.
+- Configured apps can optionally be closed gracefully.
+- The active state is stored in `state/state.json` while presentation mode is running.
+
+## Install
+
+ZenShare is meant to be easy to install on a new Windows PC.
+
+### Option 1: Scripted setup
+
+Run this from PowerShell in the project root:
+
+```powershell
+scripts\install.ps1
+```
+
+That script will:
+
+- Create a local virtual environment in `.venv` if needed.
+- Upgrade `pip`.
+- Install the dependencies from `requirements.txt`.
+
+### Option 2: Build a single executable
+
+To install dependencies and build a standalone executable:
+
+```powershell
+scripts\install.ps1 -Build
+```
+
+The executable is generated in `dist\ZenShare.exe`.
+
+## Run
+
+If you want to run the CLI from the virtual environment, use:
+
+```powershell
+scripts\run.ps1 start
+```
+
+The main commands are:
 
 - `zenshare start`
 - `zenshare stop`
@@ -21,40 +61,49 @@ This workspace now contains the initial Python package scaffold for ZenShare v1.
 - `zenshare config`
 - `zenshare logs`
 
-The `config` command also supports updates, for example:
+## Configuration
+
+The default configuration lives in `config/config.yaml`.
+
+Useful settings:
+
+- `desktop_icons`: set to `true` so ZenShare hides and restores desktop icons during start and stop.
+- `do_not_disturb`: set to `true` to suppress notifications.
+- `change_wallpaper`: set to `true` to swap in a clean wallpaper.
+- `minimize_apps`: list of apps to minimize, for example `Discord`, `WhatsApp`, `Slack`, and `Telegram`.
+- `close_apps`: list of apps to close gracefully.
+- `restore_timeout`: restore timeout in seconds.
+
+You can update the config from the CLI:
 
 ```powershell
-zenshare config --set desktop_icons=false --set restore_timeout=15
+zenshare config --set desktop_icons=true --set do_not_disturb=true --set restore_timeout=15
 ```
 
-## Install
+## Start And Stop
 
-For a fresh Windows machine:
+Start presentation mode:
 
 ```powershell
-scripts\install.ps1
+zenshare start
 ```
 
-That creates `.venv`, installs the dependencies, and gets the project ready to run.
-
-To start ZenShare from the virtual environment:
+Stop and restore the desktop state:
 
 ```powershell
-scripts\run.ps1 start
-```
-
-To build a single executable:
-
-```powershell
-scripts\install.ps1 -Build
+zenshare stop
 ```
 
 ## Browser Privacy Shield
 
-An optional Chromium-based companion extension lives in [browser-privacy-extension](browser-privacy-extension). It blurs pages that look like login, signup, registration, password, or verification screens.
+The optional Chromium-based companion extension is in [browser-privacy-extension](browser-privacy-extension).
 
-This is separate from the CLI and can be loaded as an unpacked extension in Chrome or Edge.
+It blurs pages that look like login, signup, registration, password, or verification screens. That helps keep sensitive content harder to read when a browser is on screen.
 
-## Next Steps
+Install it in Chrome or Edge as an unpacked extension if you want browser-level privacy protection alongside the CLI.
 
-The remaining work is mostly operational hardening and real-machine validation for the Windows shell settings and the browser privacy companion.
+## Notes
+
+- ZenShare is Windows-only.
+- The project is already wired for Python 3.12+.
+- Use the scripts above for the easiest setup path on a fresh machine.
