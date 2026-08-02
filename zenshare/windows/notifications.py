@@ -9,7 +9,7 @@ if sys.platform == "win32":  # pragma: no cover - Windows-only behavior
     import winreg
 
 from ..utils.exceptions import WindowsOperationError
-from .explorer import refresh_shell
+from .powershell import run_script
 
 NOTIFICATIONS_KEY = r"Software\Microsoft\Windows\CurrentVersion\PushNotifications"
 NOTIFICATION_SETTINGS_KEY = r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
@@ -39,7 +39,7 @@ class NotificationController:
 
         self._write_notifications_enabled(False)
         self.dismiss_visible_notifications()
-        refresh_shell()
+        _restart_explorer()
 
     def dismiss_visible_notifications(self) -> None:
         """Dismiss currently visible Windows toast banners when possible."""
@@ -54,7 +54,7 @@ class NotificationController:
             self._write_notifications_enabled(state)
         else:
             self._write_values(state)
-        refresh_shell()
+        _restart_explorer()
 
     def _read_value(self, key_path: str, value_name: str, default: bool) -> bool:
         self._require_windows()
@@ -174,3 +174,40 @@ class NotificationController:
     def _require_windows() -> None:
         if sys.platform != "win32":
             raise WindowsOperationError("Notification controls are only supported on Windows.")
+
+
+def _restart_explorer() -> None:
+    """Restart explorer.exe so notification registry changes apply instantly.
+
+    Kills explorer.exe via PowerShell; Windows will auto-restart it.  We then
+    wait for the new explorer process to become available so that subsequent
+    desktop-icon and wallpaper operations find valid window handles.
+    """
+
+    import subprocess
+    import time
+
+    # Kill explorer — ignore errors (it may already be stopped, access denied, etc.)
+    subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+         "Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    # Wait for explorer to restart (Windows auto-restarts it).
+    # Poll for up to 10 seconds so the caller can safely interact with the shell.
+    import psutil
+
+    for _ in range(20):
+        time.sleep(0.5)
+        for proc in psutil.process_iter(["name"]):
+            if (proc.info.get("name") or "").lower() == "explorer.exe":
+                # Give the shell a moment to fully initialise its windows.
+                time.sleep(1.5)
+                return
+
+    # If explorer still hasn't appeared, start it manually.
+    subprocess.Popen("explorer.exe", creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    time.sleep(2)

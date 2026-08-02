@@ -58,13 +58,15 @@ class PresentationManager:
         self._state_manager.save(backup)
 
         try:
-            if config.desktop_icons:
-                self._desktop_controller.hide_icons()
-                logger.info("Desktop icons hidden.")
-
+            # Suppress notifications first — this restarts explorer.exe, so any
+            # desktop-icon or wallpaper changes must happen *after* it returns.
             if config.do_not_disturb:
                 self._notification_controller.enable_suppression()
                 logger.info("Notification suppression enabled.")
+
+            if config.desktop_icons:
+                self._desktop_controller.hide_icons()
+                logger.info("Desktop icons hidden.")
 
             if config.change_wallpaper:
                 clean_wallpaper = self._wallpaper_controller.apply_clean_wallpaper(
@@ -72,19 +74,17 @@ class PresentationManager:
                 )
                 logger.info("Wallpaper changed to {}.", clean_wallpaper)
 
-            # Close configured messaging/social apps for the presentation. For
-            # backwards compatibility, the old minimize list is isolated too
-            # when close_apps has not been explicitly configured.
-            apps_to_close = config.close_apps or config.minimize_apps
-            running_apps = self._process_controller.find_running_apps(apps_to_close)
+            # Minimize configured messaging/social apps for the presentation
+            # instead of closing them, so they stay running in the background.
+            apps_to_minimize = config.close_apps or config.minimize_apps
+            running_apps = self._process_controller.find_running_apps(apps_to_minimize)
             backup = backup.model_copy(update={"running_apps": running_apps})
 
-            launch_specs = self._process_controller.capture_launch_specs(apps_to_close)
-            if apps_to_close:
-                closed_result = self._process_controller.close_apps(apps_to_close)
-                if closed_result.matched_apps:
-                    backup = backup.model_copy(update={"closed_apps": launch_specs})
-                    logger.info("Closed apps: {}.", ", ".join(closed_result.matched_apps))
+            if apps_to_minimize:
+                minimized_result = self._process_controller.minimize_apps(apps_to_minimize)
+                if minimized_result.matched_apps:
+                    backup = backup.model_copy(update={"minimized": minimized_result.matched_apps})
+                    logger.info("Minimized apps: {}.", ", ".join(minimized_result.matched_apps))
 
             # Persist the enriched backup only after all requested presentation changes succeed.
             self._state_manager.save(backup)
@@ -123,19 +123,18 @@ class PresentationManager:
 
     def _restore_from_backup(self, backup: PresentationState) -> None:
         try:
-            # Restore in the reverse order of presentation changes so later steps see the prior state.
+            # Restore minimized apps first (independent of explorer).
             if backup.minimized:
                 self._process_controller.restore_apps(backup.minimized)
                 logger.info("Restored minimized apps.")
-            if backup.closed_apps:
-                self._process_controller.relaunch_minimized(backup.closed_apps)
-                logger.info("Relaunched closed apps in the background.")
-            if backup.wallpaper is not None:
-                self._wallpaper_controller.restore_wallpaper(backup.wallpaper)
-                logger.info("Wallpaper restored.")
+            # Restore notifications next — this restarts explorer.exe, so
+            # wallpaper and desktop-icon restores must happen *after* it.
             if backup.focus_assist is not None:
                 self._notification_controller.restore(backup.focus_assist)
                 logger.info("Notification state restored.")
+            if backup.wallpaper is not None:
+                self._wallpaper_controller.restore_wallpaper(backup.wallpaper)
+                logger.info("Wallpaper restored.")
             if backup.desktop_icons is not None:
                 self._desktop_controller.restore_icons(backup.desktop_icons)
                 logger.info("Desktop icons restored.")
