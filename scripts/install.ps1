@@ -22,8 +22,17 @@ if (-not (Test-Path $venvPython)) {
 }
 
 & $venvPython -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to upgrade pip.'
+}
 & $venvPython -m pip install -r (Join-Path $projectRoot 'requirements.txt')
+if ($LASTEXITCODE -ne 0) {
+    throw 'Failed to install ZenShare dependencies.'
+}
 
 if ($Build) {
     & $venvPython -m PyInstaller --noconfirm --clean --onefile --console --name ZenShare --add-data "$projectRoot\config\defaults.yaml;config" --add-data "$projectRoot\assets\ZenShare.png;assets" --collect-all pystray --collect-all PIL --hidden-import zenshare.cli --hidden-import zenshare.tray --hidden-import zenshare.windows.notifications --hidden-import zenshare.windows.wallpaper --copy-metadata zenshare (Join-Path $projectRoot 'zenshare_cli.py')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'ZenShare.exe could not be built. Close any running ZenShare tray process and try again.'
+    }
 }
