@@ -26,13 +26,11 @@ class DesktopController:
         """Hide desktop icons."""
 
         self._write_hide_icons(True)
-        refresh_shell()
 
     def restore_icons(self, visible: bool) -> None:
         """Restore desktop icon visibility."""
 
         self._write_hide_icons(not visible)
-        refresh_shell()
 
     def _read_hide_icons(self) -> bool:
         self._require_windows()
@@ -50,6 +48,8 @@ class DesktopController:
         try:
             with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, DESKTOP_ADVANCED_KEY, 0, winreg.KEY_WRITE) as handle:
                 winreg.SetValueEx(handle, HIDE_ICONS_VALUE, 0, winreg.REG_DWORD, int(hide_icons))
+            # Reapply the setting to Explorer so the desktop updates without requiring a restart.
+            refresh_shell()
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to update desktop icon state: {exc}") from exc
 

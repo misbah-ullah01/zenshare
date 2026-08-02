@@ -27,6 +27,34 @@ The `config` command also supports updates, for example:
 zenshare config --set desktop_icons=false --set restore_timeout=15
 ```
 
+## Install
+
+For a fresh Windows machine:
+
+```powershell
+scripts\install.ps1
+```
+
+That creates `.venv`, installs the dependencies, and gets the project ready to run.
+
+To start ZenShare from the virtual environment:
+
+```powershell
+scripts\run.ps1 start
+```
+
+To build a single executable:
+
+```powershell
+scripts\install.ps1 -Build
+```
+
+## Browser Privacy Shield
+
+An optional Chromium-based companion extension lives in [browser-privacy-extension](browser-privacy-extension). It blurs pages that look like login, signup, registration, password, or verification screens.
+
+This is separate from the CLI and can be loaded as an unpacked extension in Chrome or Edge.
+
 ## Next Steps
 
-The next work item is adding unit tests for the config/state managers and the presentation flow, then validating the Windows-specific controllers more deeply.
+The remaining work is mostly operational hardening and real-machine validation for the Windows shell settings and the browser privacy companion.

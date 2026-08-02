@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "ZenShare Browser Privacy Shield",
+  "version": "0.1.0",
+  "description": "Blurs login and signup pages in Chromium-based browsers as a privacy guard for screen sharing.",
+  "permissions": ["activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

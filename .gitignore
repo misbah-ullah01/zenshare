@@ -10,4 +10,6 @@ dist/
 *.pyd
 *.spec
 logs/*.log
+state/*.json
+state/*.bmp
 instructions.txt
