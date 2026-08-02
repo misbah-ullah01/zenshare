@@ -56,6 +56,9 @@ def _stop_tray_process() -> None:
         process.terminate()
     except (FileNotFoundError, ValueError, psutil.Error):
         pass
+    finally:
+        # A forcibly terminated tray process cannot run its own cleanup.
+        pid_path.unlink(missing_ok=True)
 
 
 def open_console() -> None:
