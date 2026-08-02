@@ -48,7 +48,7 @@ class NotificationController:
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to read notification state: {exc}") from exc
 
-        return toast_enabled and self._read_global_toasts_enabled() and self._read_do_not_disturb_enabled()
+        return toast_enabled and self._read_global_toasts_enabled() and not self._read_do_not_disturb_enabled()
 
     def _read_global_toasts_enabled(self) -> bool:
         try:
@@ -77,7 +77,7 @@ class NotificationController:
                 winreg.SetValueEx(handle, TOAST_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
             with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, NOTIFICATION_SETTINGS_KEY, 0, winreg.KEY_WRITE) as handle:
                 winreg.SetValueEx(handle, GLOBAL_TOASTS_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
-                winreg.SetValueEx(handle, DO_NOT_DISTURB_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
+                winreg.SetValueEx(handle, DO_NOT_DISTURB_ENABLED_VALUE, 0, winreg.REG_DWORD, int(not enabled))
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to update notification state: {exc}") from exc
 

@@ -17,5 +17,5 @@ SCRIPTS_DIR = ROOT_DIR / "scripts"
 
 SUPPORTED_APPS = ["Discord", "WhatsApp", "Slack", "Telegram", "Teams"]
 
-DEFAULT_CLEAN_WALLPAPER_NAME = "zenshare_clean_wallpaper.bmp"
+DEFAULT_CLEAN_WALLPAPER_NAME = "zenshare_clean_wallpaper.png"
 DEFAULT_WALLPAPER_SIZE = (1920, 1080)

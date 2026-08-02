@@ -5,6 +5,7 @@ from __future__ import annotations
 import struct
 import sys
 from pathlib import Path
+import zlib
 
 if sys.platform == "win32":  # pragma: no cover - Windows-only behavior
     import ctypes
@@ -65,36 +66,24 @@ class WallpaperController:
             raise WindowsOperationError(f"Unable to apply wallpaper: {exc}") from exc
 
     def _create_solid_bmp(self, wallpaper_path: Path) -> None:
+        self._create_solid_png(wallpaper_path)
+
+    def _create_solid_png(self, wallpaper_path: Path) -> None:
         width, height = DEFAULT_WALLPAPER_SIZE
-        pixel_row_size = (width * 3 + 3) & ~3
-        pixel_data_size = pixel_row_size * height
-        file_size = 54 + pixel_data_size
-        header = struct.pack(
-            "<2sIHHIIIIHHIIIIII",
-            b"BM",
-            file_size,
-            0,
-            0,
-            54,
-            40,
-            width,
-            height,
-            1,
-            24,
-            0,
-            pixel_data_size,
-            2835,
-            2835,
-            0,
-            0,
-        )
-        pixel_row = bytes([240, 240, 240]) * width
-        padding = b"\x00" * (pixel_row_size - width * 3)
+        red, green, blue = 242, 242, 242
+
+        def chunk(tag: bytes, payload: bytes) -> bytes:
+            return struct.pack(">I", len(payload)) + tag + payload + struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF)
+
+        signature = b"\x89PNG\r\n\x1a\n"
+        ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+        row = bytes([0]) + bytes([red, green, blue]) * width
+        compressed = zlib.compress(row * height, level=9)
         with wallpaper_path.open("wb") as handle:
-            handle.write(header)
-            for _ in range(height):
-                handle.write(pixel_row)
-                handle.write(padding)
+            handle.write(signature)
+            handle.write(chunk(b"IHDR", ihdr))
+            handle.write(chunk(b"IDAT", compressed))
+            handle.write(chunk(b"IEND", b""))
 
     @staticmethod
     def _require_windows() -> None:

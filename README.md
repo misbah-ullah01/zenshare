@@ -34,6 +34,7 @@ That script will:
 - Create a local virtual environment in `.venv` if needed.
 - Upgrade `pip`.
 - Install the dependencies from `requirements.txt`.
+- Install the tray and packaging dependencies needed for the background mode and exe build.
 
 ### Option 2: Build a single executable
 
@@ -44,6 +45,31 @@ scripts\install.ps1 -Build
 ```
 
 The executable is generated in `dist\ZenShare.exe`.
+
+## Tray Mode
+
+ZenShare can run in the Windows tray so you can keep it available in the background.
+
+Start the tray app from the virtual environment:
+
+```powershell
+scripts\run.ps1 tray
+```
+
+From the tray menu you can:
+
+- Start presentation mode.
+- Stop and restore the desktop.
+- Show the current status.
+- Open the config file.
+- Open the logs.
+- Exit the tray app.
+
+If you build the exe, the same command line works:
+
+```powershell
+ZenShare.exe tray
+```
 
 ## Run
 
@@ -60,6 +86,7 @@ The main commands are:
 - `zenshare status`
 - `zenshare config`
 - `zenshare logs`
+- `zenshare tray`
 
 ## Configuration
 
@@ -107,3 +134,4 @@ Install it in Chrome or Edge as an unpacked extension if you want browser-level 
 - ZenShare is Windows-only.
 - The project is already wired for Python 3.12+.
 - Use the scripts above for the easiest setup path on a fresh machine.
+- The clean wallpaper is generated as a PNG in `state\zenshare_clean_wallpaper.png` while presentation mode is active.

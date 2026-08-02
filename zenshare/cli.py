@@ -125,5 +125,16 @@ def logs(tail: int) -> None:
     console.print(Panel("\n".join(recent_lines) if recent_lines else "No log entries found.", title=str(log_path)))
 
 
+@main.command()
+def tray() -> None:
+    """Run ZenShare in the Windows tray for background control."""
+
+    from .tray import TrayController
+
+    app = _build_app()
+    _print_header("ZenShare tray mode")
+    TrayController(app).run()
+
+
 if __name__ == "__main__":
     main()

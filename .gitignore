@@ -11,5 +11,5 @@ dist/
 *.spec
 logs/*.log
 state/*.json
-state/*.bmp
+state/*.png
 instructions.txt

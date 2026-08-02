@@ -15,6 +15,8 @@ DESKTOP_ADVANCED_KEY = r"Software\Microsoft\Windows\CurrentVersion\Explorer\Adva
 HIDE_ICONS_VALUE = "HideIcons"
 SW_HIDE = 0
 SW_SHOW = 5
+WM_SPAWN_WORKER = 0x052C
+SMTO_ABORTIFHUNG = 0x0002
 
 
 def _enum_windows(callback):
@@ -74,23 +76,53 @@ class DesktopController:
 
     def _find_desktop_icon_listview(self) -> int:
         self._require_windows()
-        found_handle = ctypes.c_void_p(0)
+        def locate() -> int:
+            found_handle = ctypes.c_void_p(0)
 
-        def enum_callback(hwnd: int, _lparam: int) -> bool:
-            shell_def_view = ctypes.windll.user32.FindWindowExW(hwnd, 0, "SHELLDLL_DefView", None)
-            if not shell_def_view:
+            def enum_callback(hwnd: int, _lparam: int) -> bool:
+                shell_def_view = ctypes.windll.user32.FindWindowExW(hwnd, 0, "SHELLDLL_DefView", None)
+                if not shell_def_view:
+                    return True
+                list_view = ctypes.windll.user32.FindWindowExW(shell_def_view, 0, "SysListView32", None)
+                if list_view:
+                    found_handle.value = list_view
+                    return False
                 return True
-            list_view = ctypes.windll.user32.FindWindowExW(shell_def_view, 0, "SysListView32", None)
-            if list_view:
-                found_handle.value = list_view
-                return False
-            return True
+
+            _enum_windows(enum_callback)
+            return int(found_handle.value or 0)
 
         try:
-            _enum_windows(enum_callback)
+            handle = locate()
+            if handle:
+                return handle
+
+            progman = ctypes.windll.user32.FindWindowW("Progman", None)
+            if progman:
+                ctypes.windll.user32.SendMessageTimeoutW(
+                    progman,
+                    WM_SPAWN_WORKER,
+                    0,
+                    0,
+                    SMTO_ABORTIFHUNG,
+                    1000,
+                    None,
+                )
+                handle = locate()
+                if handle:
+                    return handle
+
+            workerw = ctypes.windll.user32.FindWindowW("WorkerW", None)
+            if workerw:
+                shell_def_view = ctypes.windll.user32.FindWindowExW(workerw, 0, "SHELLDLL_DefView", None)
+                if shell_def_view:
+                    list_view = ctypes.windll.user32.FindWindowExW(shell_def_view, 0, "SysListView32", None)
+                    if list_view:
+                        return int(list_view)
+
+            return 0
         except Exception as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to locate the desktop icon list view: {exc}") from exc
-        return int(found_handle.value or 0)
 
     @staticmethod
     def _require_windows() -> None:
