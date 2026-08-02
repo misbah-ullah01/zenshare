@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import ctypes
 import sys
-from dataclasses import dataclass
 from collections.abc import Iterable
+from dataclasses import dataclass
+from pathlib import Path
 
 import psutil
 
 from ..utils.exceptions import WindowsOperationError
-from ..utils.validation import app_name_matches, normalize_app_names
+from ..utils.validation import app_name_matches, normalize_app_names, process_matches_target
 
 SW_MINIMIZE = 6
 SW_RESTORE = 9
@@ -50,15 +51,14 @@ class ProcessController:
 
         normalized_targets = normalize_app_names(list(app_names))
         matched_apps: list[str] = []
-        for process in psutil.process_iter(["name", "pid"]):
-            process_name = process.info.get("name") or ""
-            if not any(app_name_matches(process_name, target) for target in normalized_targets):
+        for process in psutil.process_iter(["name", "pid", "exe", "cmdline"]):
+            if not self._process_matches_targets(process, normalized_targets):
                 continue
             try:
                 # Best effort only: request a normal exit first and avoid forced termination.
                 process.terminate()
                 process.wait(timeout=5)
-                matched_apps.append(process_name)
+                matched_apps.append(self._process_display_name(process))
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
                 continue
         return ProcessActionResult(matched_apps=matched_apps)
@@ -76,13 +76,28 @@ class ProcessController:
 
     def _iter_matching_processes(self, targets: list[str]) -> list[tuple[str, int]]:
         matches: list[tuple[str, int]] = []
-        for process in psutil.process_iter(["name", "pid"]):
-            process_name = process.info.get("name") or ""
-            if not process_name:
+        for process in psutil.process_iter(["name", "pid", "exe", "cmdline"]):
+            if not self._process_matches_targets(process, targets):
                 continue
-            if any(app_name_matches(process_name, target) for target in targets):
-                matches.append((process_name, process.info["pid"]))
+            matches.append((self._process_display_name(process), process.info["pid"]))
         return matches
+
+    def _process_matches_targets(self, process: psutil.Process, targets: list[str]) -> bool:
+        process_name = process.info.get("name") or ""
+        process_executable = process.info.get("exe") or ""
+        command_line = process.info.get("cmdline") or []
+        return any(
+            process_matches_target(process_name, process_executable or None, command_line, target)
+            for target in targets
+        )
+
+    @staticmethod
+    def _process_display_name(process: psutil.Process) -> str:
+        process_name = process.info.get("name") or ""
+        process_executable = process.info.get("exe") or ""
+        if process_executable:
+            return Path(process_executable).stem or process_name
+        return Path(process_name).stem or process_name
 
     def _set_windows_state_for_pid(self, pid: int, command: int) -> bool:
         found_window = False

@@ -14,6 +14,7 @@ NOTIFICATIONS_KEY = r"Software\Microsoft\Windows\CurrentVersion\PushNotification
 NOTIFICATION_SETTINGS_KEY = r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
 TOAST_ENABLED_VALUE = "ToastEnabled"
 GLOBAL_TOASTS_ENABLED_VALUE = "NOC_GLOBAL_SETTING_TOASTS_ENABLED"
+DO_NOT_DISTURB_ENABLED_VALUE = "NOC_GLOBAL_SETTING_DO_NOT_DISTURB_ENABLED"
 
 
 class NotificationController:
@@ -47,7 +48,7 @@ class NotificationController:
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to read notification state: {exc}") from exc
 
-        return toast_enabled and self._read_global_toasts_enabled()
+        return toast_enabled and self._read_global_toasts_enabled() and self._read_do_not_disturb_enabled()
 
     def _read_global_toasts_enabled(self) -> bool:
         try:
@@ -59,6 +60,16 @@ class NotificationController:
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to read focus assist state: {exc}") from exc
 
+    def _read_do_not_disturb_enabled(self) -> bool:
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, NOTIFICATION_SETTINGS_KEY, 0, winreg.KEY_READ) as handle:
+                value, _ = winreg.QueryValueEx(handle, DO_NOT_DISTURB_ENABLED_VALUE)
+                return bool(value)
+        except FileNotFoundError:
+            return True
+        except OSError as exc:  # pragma: no cover - platform specific
+            raise WindowsOperationError(f"Unable to read do not disturb state: {exc}") from exc
+
     def _write_notifications_enabled(self, enabled: bool) -> None:
         self._require_windows()
         try:
@@ -66,6 +77,7 @@ class NotificationController:
                 winreg.SetValueEx(handle, TOAST_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
             with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, NOTIFICATION_SETTINGS_KEY, 0, winreg.KEY_WRITE) as handle:
                 winreg.SetValueEx(handle, GLOBAL_TOASTS_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
+                winreg.SetValueEx(handle, DO_NOT_DISTURB_ENABLED_VALUE, 0, winreg.REG_DWORD, int(enabled))
         except OSError as exc:  # pragma: no cover - platform specific
             raise WindowsOperationError(f"Unable to update notification state: {exc}") from exc
 
