@@ -21,6 +21,12 @@ This workspace now contains the initial Python package scaffold for ZenShare v1.
 - `zenshare config`
 - `zenshare logs`
 
+The `config` command also supports updates, for example:
+
+```powershell
+zenshare config --set desktop_icons=false --set restore_timeout=15
+```
+
 ## Next Steps
 
 The next work item is adding unit tests for the config/state managers and the presentation flow, then validating the Windows-specific controllers more deeply.

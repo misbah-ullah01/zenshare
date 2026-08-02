@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import click
 from rich.console import Console
 from rich.panel import Panel
@@ -21,6 +23,24 @@ def _build_app() -> ZenShareApp:
 
 def _print_header(title: str) -> None:
     console.print(Panel.fit(title, title=APP_NAME))
+
+
+def _parse_config_value(raw_value: str) -> Any:
+    """Convert a CLI config value into a useful Python type."""
+
+    value = raw_value.strip()
+    if value.lower() in {"true", "false"}:
+        return value.lower() == "true"
+    if value.isdigit():
+        return int(value)
+    if "," in value:
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if value.startswith("[") and value.endswith("]"):
+        inner = value[1:-1].strip()
+        if not inner:
+            return []
+        return [item.strip() for item in inner.split(",") if item.strip()]
+    return value
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -64,10 +84,28 @@ def status() -> None:
 
 
 @main.command()
-def config() -> None:
-    """Show the active configuration."""
+@click.option(
+    "--set",
+    "config_values",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Update a configuration setting and persist it.",
+)
+def config(config_values: tuple[str, ...]) -> None:
+    """Show or update the active configuration."""
 
     app = _build_app()
+    if config_values:
+        updates: dict[str, Any] = {}
+        for entry in config_values:
+            if "=" not in entry:
+                raise click.UsageError("Each --set value must use KEY=VALUE format.")
+            key, raw_value = entry.split("=", 1)
+            updates[key.strip()] = _parse_config_value(raw_value)
+        updated = app.config_manager.update(**updates)
+        console.print(updated.model_dump_json(indent=2))
+        return
+
     console.print(app.config().model_dump_json(indent=2))
 
 
